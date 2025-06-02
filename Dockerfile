@@ -3,7 +3,7 @@ FROM bluenviron/mediamtx:latest
 
 # Set environment variables for RTSP and WebRTC configuration
 ENV MTX_RTSPTRANSPORTS=tcp
-ENV MTX_WEBRTCADDITIONALHOSTS=192.168.x.x
+ENV MTX_WEBRTCADDITIONALHOSTS=20.62.193.224
 
 # Expose the required ports
 # RTSP port
