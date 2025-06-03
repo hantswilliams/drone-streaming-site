@@ -1,0 +1,20 @@
+rtspTransport: tcp
+webrtcAdditionalHosts: ["20.62.193.224"]
+api: yes
+apiAddress: 0.0.0.0:9997
+
+paths:
+  all:
+    runOnInit: ""
+    runOnInitRestart: no
+    runOnDemand: ""
+    runOnDemandRestart: no
+    runOnDemandStartTimeout: 10s
+    runOnDemandCloseAfter: 10s
+    runOnUnDemand: ""
+    runOnReady: ""
+    runOnNotReady: ""
+    runOnRead: ""
+    runOnUnread: ""
+    runOnRecordSegmentCreate: ""
+    runOnRecordSegmentComplete: ""

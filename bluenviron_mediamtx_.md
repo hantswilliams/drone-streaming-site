@@ -3,6 +3,14 @@
 ## Docker run command: 
 
 
+# Run the container
+```bash
+docker run --rm -it \
+  -p 1935:1935 \
+  -p 8888:8888 \
+  drone
+```
+
 
 ```bash
 docker run --rm -it \
