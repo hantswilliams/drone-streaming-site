@@ -1,18 +1,17 @@
-# Dockerfile for MediaMTX streaming server
-FROM bluenviron/mediamtx:1.8.5
-
-# Set environment variables for RTSP and WebRTC configuration
-ENV MTX_RTSPTRANSPORTS=tcp
-ENV MTX_WEBRTCADDITIONALHOSTS=20.62.193.224
+# Dockerfile for SRS (Simple Realtime Server)
+FROM ossrs/srs:5
 
 # Expose the required ports
-# RTMP port  
+# RTMP port
 EXPOSE 1935
-# HTTP/WebRTC ports
-EXPOSE 8888
-
+# HTTP API port
+EXPOSE 1985
+# HTTP server port
+EXPOSE 8080
+# WebRTC UDP ports
+EXPOSE 8000/udp
+EXPOSE 10080/udp
 
 # Set the working directory
-WORKDIR /
-
+WORKDIR /usr/local/srs
 
