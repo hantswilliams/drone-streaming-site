@@ -1,0 +1,43 @@
+# Core Computer Vision and Image Processing
+opencv-python
+numpy
+Pillow
+
+# YOLO v8 and Deep Learning
+ultralytics
+torch
+torchvision
+torchaudio
+
+# Additional ML/AI packages that ultralytics might need
+scipy
+matplotlib
+seaborn
+pandas
+
+# For RTMP streaming and video processing
+av
+ffmpeg-python
+
+# Utilities
+requests
+tqdm
+PyYAML
+
+# Optional: GPU acceleration (uncomment if you have CUDA)
+# torch==2.0.1+cu118 --index-url https://download.pytorch.org/whl/cu118
+# torchvision==0.15.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+# torchaudio==2.0.2+cu118 --index-url https://download.pytorch.org/whl/cu118
+
+# Development and debugging
+psutil
+
+# For JSON handling (already in Python standard library, but listed for clarity)
+# json - built-in
+# datetime - built-in
+# threading - built-in
+# queue - built-in
+# argparse - built-in
+# sys - built-in
+# os - built-in
+# time - built-in
