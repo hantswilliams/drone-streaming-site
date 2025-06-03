@@ -18,7 +18,7 @@ import json
 class RTMPStreamProcessor:
     """Real-time RTMP stream processor with computer vision capabilities"""
     
-    def __init__(self, rtmp_url="rtmp://localhost/mystream", output_dir="./cv_output"):
+    def __init__(self, rtmp_url="rtmp://34.67.35.85:1935/live/livestream", output_dir="./cv_output"):
         self.rtmp_url = rtmp_url
         self.output_dir = output_dir
         self.cap = None
@@ -375,7 +375,7 @@ class RTMPStreamProcessor:
 
 def main():
     parser = argparse.ArgumentParser(description='RTMP Stream Computer Vision Processor')
-    parser.add_argument('--url', default='rtmp://localhost/mystream',
+    parser.add_argument('--url', default='rtmp://34.67.35.85:1935/live/livestream',
                        help='RTMP stream URL')
     parser.add_argument('--output', default='./cv_output',
                        help='Output directory for saved frames and results')
