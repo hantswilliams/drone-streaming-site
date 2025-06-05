@@ -1,0 +1,67 @@
+{
+  "frame_number": 1,
+  "timestamp": "20250604_205405",
+  "detections": [
+    {
+      "class_id": 6,
+      "class_name": "train",
+      "confidence": 0.855215847492218,
+      "bbox": [
+        0,
+        33,
+        442,
+        782
+      ],
+      "timestamp": "2025-06-04T20:54:05.591568"
+    },
+    {
+      "class_id": 2,
+      "class_name": "car",
+      "confidence": 0.5854012370109558,
+      "bbox": [
+        193,
+        1018,
+        257,
+        1079
+      ],
+      "timestamp": "2025-06-04T20:54:05.593243"
+    },
+    {
+      "class_id": 2,
+      "class_name": "car",
+      "confidence": 0.5661104321479797,
+      "bbox": [
+        434,
+        850,
+        494,
+        954
+      ],
+      "timestamp": "2025-06-04T20:54:05.593290"
+    },
+    {
+      "class_id": 2,
+      "class_name": "car",
+      "confidence": 0.5156791806221008,
+      "bbox": [
+        295,
+        960,
+        368,
+        1079
+      ],
+      "timestamp": "2025-06-04T20:54:05.593323"
+    },
+    {
+      "class_id": 2,
+      "class_name": "car",
+      "confidence": 0.4255557656288147,
+      "bbox": [
+        393,
+        965,
+        462,
+        1079
+      ],
+      "timestamp": "2025-06-04T20:54:05.593358"
+    }
+  ],
+  "total_objects": 5
+}

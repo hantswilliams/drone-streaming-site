@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-YOLO v8 RTMP Stream Analysis
-Real-time object detection and segmentation using YOLOv8 on RTMP stream
+YOLO v8 RTMP Stream and Video File Analysis
+Real-time object detection and segmentation using YOLOv8 on RTMP streams or local video files
 """
 
 import cv2
@@ -18,13 +18,15 @@ from ultralytics import YOLO
 import torch
 
 class YOLOv8StreamProcessor:
-    """Real-time RTMP stream processor with YOLOv8 object detection and segmentation"""
+    """Real-time processor with YOLOv8 object detection and segmentation for RTMP streams or local video files"""
 
-    def __init__(self, rtmp_url="rtmp://34.67.35.85:1935/live/livestream", output_dir="./yolo_output"):
-        self.rtmp_url = rtmp_url
+    def __init__(self, input_source="rtmp://34.67.35.85:1935/live/livestream", output_dir="./yolo_output", is_video_file=False):
+        self.input_source = input_source
         self.output_dir = output_dir
+        self.is_video_file = is_video_file
         self.cap = None
         self.running = False
+        self.capture_finished = False  # Flag to track when video capture is done
         self.frame_queue = queue.Queue(maxsize=10)
         self.detection_results = []
         
@@ -56,26 +58,42 @@ class YOLOv8StreamProcessor:
         self.fps_counter = 0
         self.fps_start_time = time.time()
         
-    def connect_to_stream(self):
-        """Connect to RTMP stream"""
-        print(f"Connecting to RTMP stream: {self.rtmp_url}")
+    def connect_to_source(self):
+        """Connect to input source (RTMP stream or local video file)"""
+        if self.is_video_file:
+            print(f"Opening local video file: {self.input_source}")
+            if not os.path.exists(self.input_source):
+                print(f"Error: Video file not found: {self.input_source}")
+                return False
+        else:
+            print(f"Connecting to RTMP stream: {self.input_source}")
         
-        # Configure OpenCV for RTMP
-        self.cap = cv2.VideoCapture(self.rtmp_url)
+        # Configure OpenCV for RTMP or video file
+        self.cap = cv2.VideoCapture(self.input_source)
         
-        # Set buffer size to reduce latency
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # Set buffer size to reduce latency (mainly for streams)
+        if not self.is_video_file:
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         
         if not self.cap.isOpened():
-            print("Error: Could not connect to RTMP stream")
+            source_type = "video file" if self.is_video_file else "RTMP stream"
+            print(f"Error: Could not open {source_type}")
             return False
             
-        # Get stream properties
+        # Get source properties
         fps = self.cap.get(cv2.CAP_PROP_FPS)
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        print(f"Stream properties: {width}x{height} @ {fps} FPS")
+        source_type = "Video file" if self.is_video_file else "Stream"
+        print(f"{source_type} properties: {width}x{height} @ {fps} FPS")
+        
+        # For video files, also show duration and frame count
+        if self.is_video_file:
+            frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            duration = frame_count / fps if fps > 0 else 0
+            print(f"Video duration: {duration:.2f} seconds ({frame_count} frames)")
+        
         return True
     
     def process_frame_with_yolo(self, frame):
@@ -182,28 +200,54 @@ class YOLOv8StreamProcessor:
     
     def frame_capture_worker(self):
         """Worker thread for capturing frames"""
+        frames_read_successfully = 0
+        consecutive_failures = 0
+        
         while self.running:
             if self.cap is not None:
                 ret, frame = self.cap.read()
                 if ret:
-                    if not self.frame_queue.full():
-                        self.frame_queue.put(frame)
-                    else:
-                        # Drop frame if queue is full (reduce latency)
-                        try:
-                            self.frame_queue.get_nowait()
+                    frames_read_successfully += 1
+                    consecutive_failures = 0
+                    
+                    # For video files, wait until queue has space (don't drop frames)
+                    # For streams, drop frames to maintain real-time processing
+                    if self.is_video_file:
+                        # Wait for queue space - don't drop frames for video files
+                        while self.frame_queue.full() and self.running:
+                            time.sleep(0.01)
+                        if self.running:
                             self.frame_queue.put(frame)
-                        except queue.Empty:
-                            pass
+                    else:
+                        # For streams, drop frames if queue is full (reduce latency)
+                        if not self.frame_queue.full():
+                            self.frame_queue.put(frame)
+                        else:
+                            try:
+                                self.frame_queue.get_nowait()
+                                self.frame_queue.put(frame)
+                            except queue.Empty:
+                                pass
                 else:
-                    print("Failed to read frame from stream")
-                    time.sleep(0.1)
+                    consecutive_failures += 1
+                    
+                    if self.is_video_file:
+                        if consecutive_failures >= 3:
+                            print(f"Reached end of video file (read {frames_read_successfully} frames successfully)")
+                            self.capture_finished = True
+                            break
+                        else:
+                            # Might be a temporary read issue, try a few more times
+                            time.sleep(0.01)
+                    else:
+                        print("Failed to read frame from stream")
+                        time.sleep(0.1)
             else:
                 time.sleep(0.1)
     
     def start_processing(self):
-        """Start the RTMP stream processing"""
-        if not self.connect_to_stream():
+        """Start the input source processing"""
+        if not self.connect_to_source():
             return False
         
         self.running = True
@@ -214,15 +258,20 @@ class YOLOv8StreamProcessor:
         capture_thread.daemon = True
         capture_thread.start()
         
-        print("Starting YOLOv8 stream processing...")
+        source_type = "video file" if self.is_video_file else "RTMP stream"
+        print(f"Starting YOLOv8 {source_type} processing...")
         print("Press 'q' to quit, 's' to save current frame")
         
         try:
+            empty_queue_count = 0
+            max_empty_queue_attempts = 10  # Allow some attempts for empty queue
+            
             while self.running:
                 try:
                     # Get frame from queue
                     frame = self.frame_queue.get(timeout=1.0)
                     self.frame_count += 1
+                    empty_queue_count = 0  # Reset counter when we get a frame
                     
                     # Process frame with YOLOv8
                     annotated_frame, detections = self.process_frame_with_yolo(frame)
@@ -236,12 +285,14 @@ class YOLOv8StreamProcessor:
                         
                         # Save frame with detections
                         self.save_frame(annotated_frame, self.frame_count)
+                    else:
+                        print(f"Frame {self.frame_count}: No objects detected")
                     
                     # Calculate FPS
                     self.calculate_fps()
                     
                     # Display frame
-                    cv2.imshow('YOLOv8 RTMP Stream Analysis', annotated_frame)
+                    cv2.imshow(f'YOLOv8 {source_type.title()} Analysis', annotated_frame)
                     
                     # Handle keyboard input
                     key = cv2.waitKey(1) & 0xFF
@@ -253,8 +304,23 @@ class YOLOv8StreamProcessor:
                         print(f"Frame saved: {filename}")
                         
                 except queue.Empty:
-                    print("No frames available, checking stream...")
-                    continue
+                    empty_queue_count += 1
+                    
+                    if self.is_video_file:
+                        # For video files, check if capture is finished and queue is empty
+                        if self.capture_finished and self.frame_queue.empty():
+                            print("Video file processing completed - all frames processed")
+                            break
+                        elif empty_queue_count >= max_empty_queue_attempts:
+                            print("Video file processing completed - timeout waiting for frames")
+                            break
+                        else:
+                            print(f"Waiting for more frames... ({empty_queue_count}/{max_empty_queue_attempts})")
+                            time.sleep(0.1)
+                            continue
+                    else:
+                        print("No frames available, checking stream...")
+                        continue
                     
         except KeyboardInterrupt:
             print("\nInterrupted by user")
@@ -300,9 +366,15 @@ class YOLOv8StreamProcessor:
 
 def main():
     """Main function"""
-    parser = argparse.ArgumentParser(description="YOLOv8 Small Model RTMP Stream Analysis")
-    parser.add_argument("--url", default="rtmp://34.67.35.85:1935/live/livestream",
-                      help="RTMP stream URL")
+    parser = argparse.ArgumentParser(description="YOLOv8 Small Model Analysis (RTMP Stream or Local Video)")
+    
+    # Input source - mutually exclusive group
+    input_group = parser.add_mutually_exclusive_group(required=False)
+    input_group.add_argument("--url", default="rtmp://34.67.35.85:1935/live/livestream",
+                      help="RTMP stream URL (default)")
+    input_group.add_argument("--video", type=str,
+                      help="Local video file path for testing")
+    
     parser.add_argument("--output", default="./yolo_output",
                       help="Output directory for results")
     # Removed --model argument to prevent downloading other models
@@ -315,10 +387,21 @@ def main():
     
     args = parser.parse_args()
     
+    # Determine input source and type
+    if args.video:
+        input_source = args.video
+        is_video_file = True
+        print(f"Using local video file: {input_source}")
+    else:
+        input_source = args.url
+        is_video_file = False
+        print(f"Using RTMP stream: {input_source}")
+    
     # Create processor - always uses yolov8s.pt (small model)
     processor = YOLOv8StreamProcessor(
-        rtmp_url=args.url,
-        output_dir=args.output
+        input_source=input_source,
+        output_dir=args.output,
+        is_video_file=is_video_file
     )
     
     # Configure model parameters (model is fixed to yolov8s.pt)
@@ -332,10 +415,12 @@ def main():
     success = processor.start_processing()
     
     if not success:
-        print("Failed to start stream processing")
+        source_type = "video file" if is_video_file else "stream"
+        print(f"Failed to start {source_type} processing")
         return 1
     
-    print("YOLOv8 stream processing completed")
+    source_type = "video file" if is_video_file else "stream"
+    print(f"YOLOv8 {source_type} processing completed")
     return 0
 
 if __name__ == "__main__":
